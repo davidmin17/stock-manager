@@ -1,0 +1,95 @@
+"use client";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ScoreGauge } from "./score-gauge";
+import {
+  Newspaper,
+  BarChart3,
+  DollarSign,
+  ShieldAlert,
+  Trophy,
+} from "lucide-react";
+import type { AgentCardState, AgentId } from "@/types/agent";
+
+const AGENT_META: Record<
+  AgentId,
+  { icon: React.ElementType; title: string; color: string }
+> = {
+  news: { icon: Newspaper, title: "뉴스/센티먼트", color: "text-blue-500" },
+  "market-data": {
+    icon: BarChart3,
+    title: "시세/거래량",
+    color: "text-emerald-500",
+  },
+  financial: {
+    icon: DollarSign,
+    title: "재무 분석",
+    color: "text-amber-500",
+  },
+  risk: { icon: ShieldAlert, title: "리스크 분석", color: "text-red-500" },
+  synthesizer: {
+    icon: Trophy,
+    title: "종합 평가",
+    color: "text-purple-500",
+  },
+};
+
+function getScore(result: AgentCardState["result"]): number {
+  if (!result) return 0;
+  if ("totalScore" in result) return result.totalScore;
+  if ("score" in result) return result.score;
+  return 0;
+}
+
+export function AgentCard({ agentId, status, result, error }: AgentCardState) {
+  const meta = AGENT_META[agentId];
+  const Icon = meta.icon;
+
+  return (
+    <Card
+      className={`transition-all duration-300 ${status === "idle" ? "opacity-50" : ""}`}
+    >
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Icon className={`h-5 w-5 ${meta.color}`} />
+          {meta.title}
+          {status === "running" && (
+            <Badge variant="secondary" className="ml-auto animate-pulse">
+              분석 중...
+            </Badge>
+          )}
+          {status === "error" && (
+            <Badge variant="destructive" className="ml-auto">
+              오류
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {status === "running" && (
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        )}
+        {status === "error" && (
+          <p className="text-sm text-destructive">{error}</p>
+        )}
+        {status === "completed" && result && (
+          <div className="flex items-center gap-3">
+            <ScoreGauge score={getScore(result)} />
+            <p className="text-sm text-muted-foreground flex-1 line-clamp-3">
+              {result.summary}
+            </p>
+          </div>
+        )}
+        {status === "idle" && (
+          <p className="text-sm text-muted-foreground">대기 중</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
