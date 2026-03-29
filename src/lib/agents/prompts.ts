@@ -104,6 +104,7 @@ export const SYNTHESIZER_SYSTEM_PROMPT = `당신은 한국 주식 투자 종합 
   },
   "recommendation": ("강력매수" | "매수" | "중립" | "매도" | "강력매도"),
   "targetPrice": "(목표 주가 + 근거)",
+  "stopLossPrice": "(손절 주가 + 근거, 주요 지지선/리스크 기반으로 산출)",
   "summary": "(종합 평가 요약 5-7줄)",
   "keyInvestmentPoints": [
     { "type": ("강점"|"약점"|"기회"|"위협"), "point": "설명" }

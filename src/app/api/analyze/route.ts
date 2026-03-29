@@ -3,6 +3,7 @@ import { runMarketDataAgent } from "@/lib/agents/market-agent";
 import { runFinancialAgent } from "@/lib/agents/financial-agent";
 import { runRiskAgent } from "@/lib/agents/risk-agent";
 import { runSynthesizerAgent } from "@/lib/agents/synthesizer-agent";
+import { isValidStockCode, isValidStockName } from "@/lib/validate";
 import type { AgentId, AgentResult } from "@/types/agent";
 
 export const runtime = "nodejs";
@@ -10,6 +11,14 @@ export const maxDuration = 120;
 
 export async function POST(req: Request) {
   const { stockName, stockCode } = await req.json();
+
+  if (!isValidStockName(stockName) || !isValidStockCode(stockCode)) {
+    return new Response(
+      JSON.stringify({ error: "유효하지 않은 종목 정보입니다" }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({

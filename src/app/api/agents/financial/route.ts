@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("[Agent Error] financial:", error);
     return NextResponse.json(
-      { error: "재무 분석 실패", details: String(error) },
+      { error: "재무 분석 실패" },
       { status: 502 }
     );
   }

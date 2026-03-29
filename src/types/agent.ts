@@ -95,6 +95,7 @@ export interface SynthesizerAgentResult {
   };
   recommendation: "강력매수" | "매수" | "중립" | "매도" | "강력매도";
   targetPrice: string;
+  stopLossPrice: string;
   summary: string;
   keyInvestmentPoints: {
     type: "강점" | "약점" | "기회" | "위협";

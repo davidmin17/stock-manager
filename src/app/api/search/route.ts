@@ -5,6 +5,10 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const query = searchParams.get("q") ?? "";
 
-  const results = searchStocks(query, 10);
+  if (query.length > 50) {
+    return NextResponse.json([], { status: 400 });
+  }
+
+  const results = await searchStocks(query, 10);
   return NextResponse.json(results);
 }

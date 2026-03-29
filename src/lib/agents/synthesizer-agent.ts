@@ -5,10 +5,10 @@ import type { SynthesizerAgentResult, AgentResult } from "@/types/agent";
 export async function runSynthesizerAgent(
   agentResults: PromiseSettledResult<AgentResult>[]
 ): Promise<SynthesizerAgentResult> {
+  const agentIds = ["news", "market-data", "financial", "risk"] as const;
   const settled = agentResults.map((r, i) => {
-    const ids = ["news", "market-data", "financial", "risk"];
     if (r.status === "fulfilled") return r.value;
-    return { agentId: ids[i], error: String(r.reason), score: 0 };
+    return { agentId: agentIds[i], status: "failed", error: String(r.reason) };
   });
 
   const userPrompt = `아래는 4개 분석 에이전트의 결과입니다:

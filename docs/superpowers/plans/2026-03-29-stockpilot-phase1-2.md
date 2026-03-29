@@ -676,7 +676,7 @@ export function findStockByName(name: string): StockInfo | undefined {
 
 - [ ] **Step 3: 검색 API 라우트 구현**
 
-`src/app/api/search/route.ts`:
+`src/app/route.ts`:
 ```typescript
 import { NextResponse } from "next/server";
 import { searchStocks } from "@/lib/stock-code";

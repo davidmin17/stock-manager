@@ -14,12 +14,14 @@ export function AnalysisDashboard({ agentStates }: AnalysisDashboardProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Agent Cards — 모바일 1열, 태블릿+ 2열 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {subAgents.map((state) => (
           <AgentCard key={state.agentId} {...state} />
         ))}
       </div>
 
+      {/* Synthesizer */}
       {synthesizer && synthesizer.status !== "idle" && (
         <div>
           {synthesizer.status === "completed" && synthesizer.result ? (

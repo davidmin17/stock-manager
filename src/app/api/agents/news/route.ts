@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("[Agent Error] news:", error);
     return NextResponse.json(
-      { error: "뉴스 분석 실패", details: String(error) },
+      { error: "뉴스 분석 실패" },
       { status: 502 }
     );
   }

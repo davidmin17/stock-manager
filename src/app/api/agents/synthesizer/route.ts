@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("[Agent Error] synthesizer:", error);
     return NextResponse.json(
-      { error: "종합 평가 실패", details: String(error) },
+      { error: "종합 평가 실패" },
       { status: 502 }
     );
   }
