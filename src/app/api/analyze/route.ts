@@ -4,12 +4,21 @@ import { runFinancialAgent } from "@/lib/agents/financial-agent";
 import { runRiskAgent } from "@/lib/agents/risk-agent";
 import { runSynthesizerAgent } from "@/lib/agents/synthesizer-agent";
 import { isValidStockCode, isValidStockName } from "@/lib/validate";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import type { AgentId, AgentResult } from "@/types/agent";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`analyze:${ip}`, 5)) {
+    return new Response(
+      JSON.stringify({ error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." }),
+      { status: 429, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   const { stockName, stockCode } = await req.json();
 
   if (!isValidStockName(stockName) || !isValidStockCode(stockCode)) {
