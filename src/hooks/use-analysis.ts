@@ -42,63 +42,76 @@ export function useAnalysis() {
       setIsAnalyzing(true);
       setAgentStates(createInitialStates());
 
-      try {
-        const res = await fetch("/api/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            stockName: stock.name,
-            stockCode: stock.code,
-          }),
-        });
+      const body = { stockName: stock.name, stockCode: stock.code };
 
-        if (!res.ok || !res.body) {
-          throw new Error(`Analysis request failed: ${res.status}`);
-        }
+      // Agent 1~4: 클라이언트에서 개별 병렬 호출
+      const parallelAgents: { id: AgentId; path: string; body: Record<string, string> }[] = [
+        { id: "news", path: "/api/agents/news", body },
+        { id: "market-data", path: "/api/agents/market-data", body: { stockCode: stock.code } },
+        { id: "financial", path: "/api/agents/financial", body },
+        { id: "risk", path: "/api/agents/risk", body },
+      ];
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-
-          let eventType = "";
-          for (const line of lines) {
-            if (line.startsWith("event: ")) {
-              eventType = line.slice(7).trim();
-            } else if (line.startsWith("data: ")) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (eventType === "agent-start") {
-                  updateAgent(data.agentId as AgentId, { status: "running" });
-                } else if (eventType === "agent-complete") {
-                  updateAgent(data.agentId as AgentId, {
-                    status: "completed",
-                    result: data.result as AgentResult,
-                  });
-                } else if (eventType === "agent-error") {
-                  updateAgent(data.agentId as AgentId, {
-                    status: "error",
-                    error: data.error as string,
-                  });
-                }
-              } catch {
-                // skip malformed JSON
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Analysis failed:", error);
-      } finally {
-        setIsAnalyzing(false);
+      for (const { id } of parallelAgents) {
+        updateAgent(id, { status: "running" });
       }
+
+      const results = await Promise.allSettled(
+        parallelAgents.map(async ({ id, path, body: reqBody }) => {
+          const res = await fetch(path, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(reqBody),
+          });
+
+          if (!res.ok) throw new Error(`${id} failed: ${res.status}`);
+
+          const result: AgentResult = await res.json();
+          updateAgent(id, { status: "completed", result });
+          return result;
+        })
+      );
+
+      // 실패한 에이전트 에러 처리
+      for (let i = 0; i < results.length; i++) {
+        const r = results[i];
+        if (r.status === "rejected") {
+          updateAgent(parallelAgents[i].id, {
+            status: "error",
+            error: String(r.reason),
+          });
+        }
+      }
+
+      // Agent 5: 성공한 결과만 모아 종합 평가
+      const fulfilled = results
+        .filter((r): r is PromiseFulfilledResult<AgentResult> => r.status === "fulfilled")
+        .map((r) => r.value);
+
+      if (fulfilled.length > 0) {
+        updateAgent("synthesizer", { status: "running" });
+        try {
+          const res = await fetch("/api/agents/synthesizer", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ agentResults: fulfilled }),
+          });
+
+          if (!res.ok) throw new Error(`synthesizer failed: ${res.status}`);
+
+          const result: AgentResult = await res.json();
+          updateAgent("synthesizer", { status: "completed", result });
+        } catch (error) {
+          updateAgent("synthesizer", { status: "error", error: String(error) });
+        }
+      } else {
+        updateAgent("synthesizer", {
+          status: "error",
+          error: "분석 에이전트 결과가 없어 종합 평가를 수행할 수 없습니다.",
+        });
+      }
+
+      setIsAnalyzing(false);
     },
     [updateAgent]
   );
