@@ -66,7 +66,7 @@ async function fetchAllStocks(): Promise<StockInfo[]> {
   return [...kospi, ...kosdaq].sort((a, b) => a.code.localeCompare(b.code));
 }
 
-async function refreshStocks(): Promise<StockInfo[]> {
+export async function refreshStocks(): Promise<StockInfo[]> {
   const todayKey = getTodayKey();
 
   console.log(`[StockCodes] Fetching fresh data for ${todayKey}...`);

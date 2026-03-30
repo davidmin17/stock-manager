@@ -24,9 +24,12 @@ export async function callGemini(params: {
 
   const tools = useSearch ? [{ googleSearch: {} }] : undefined;
 
-  // Google Search 사용 시 responseMimeType: "application/json" 불가
-  const response = await getAI().models.generateContent({
-    model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
+  let response;
+  try {
+    response = await getAI().models.generateContent({
+    model,
     contents: [{ role: "user", parts: [{ text: userPrompt }] }],
     config: {
       systemInstruction: systemPrompt,
@@ -34,7 +37,16 @@ export async function callGemini(params: {
       temperature,
       ...(!useSearch && { responseMimeType: "application/json" }),
     },
-  });
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("429") || message.includes("RESOURCE_EXHAUSTED")) {
+      console.error(`[Gemini] Rate limit exceeded (model: ${model})`);
+      throw new Error("AI 분석 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.");
+    }
+    console.error("[Gemini] API error:", message);
+    throw new Error("AI 분석 중 오류가 발생했습니다");
+  }
 
   const text = response.text ?? "{}";
   // 마크다운 코드블록 제거 후 JSON 부분만 추출
