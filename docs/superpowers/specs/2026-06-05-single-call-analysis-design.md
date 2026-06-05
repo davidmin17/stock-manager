@@ -100,10 +100,11 @@
 - 응답 수신 후 5개 카드를 한 번에 `completed`로 채움. 에러 시 5개 모두 `error`.
 - 카드/대시보드 컴포넌트 레이아웃은 유지(유동비율 표시만 추가).
 
-### (F) 유동비율 추가 — `src/types/agent.ts` + 재무 카드
+### (F) 유동비율 추가 — `src/types/agent.ts` + 프롬프트
 - `FinancialAgentResult`에 `currentRatio: number | null` 추가.
 - `UNIFIED_SYSTEM_PROMPT`의 financial 스키마에 `currentRatio`(유동비율 %) 포함.
-- 재무 카드(`agent-card.tsx`)에 유동비율 항목 표시 (PER/PBR/ROE/부채비율 옆).
+- 재무 카드(`agent-card.tsx`)는 개별 지표(PER/PBR/ROE 등)를 렌더링하지 않고 `summary`만
+  표시하므로, 유동비율은 `summary` 텍스트로 반영된다. **별도 카드 UI 변경 없음.**
 
 ## 6. 트레이드오프 / 리스크
 
