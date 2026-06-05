@@ -6,6 +6,11 @@ import type {
   MarketDataAgentResult,
 } from "@/types/agent";
 
+const num = (v: string | undefined) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
 export async function runUnifiedAnalysis(
   stockName: string,
   stockCode: string
@@ -48,8 +53,8 @@ ${marketDataJson}
     .slice(0, 30)
     .map((d) => ({
       date: d.stck_bsop_date,
-      close: Number(d.stck_clpr),
-      volume: Number(d.acml_vol),
+      close: num(d.stck_clpr),
+      volume: num(d.acml_vol),
     }))
     .reverse();
 
@@ -60,13 +65,14 @@ ${marketDataJson}
           recentVolumes.reduce((sum, v) => sum + v, 0) / recentVolumes.length
         )
       : 0;
-  const volume = Number(priceData.output.acml_vol);
+  const volume = num(priceData.output.acml_vol);
 
+  // Gemini 해석 필드 + KIS 실데이터 수치 필드 병합
   const marketData: MarketDataAgentResult = {
     ...combined.marketData,
     agentId: "market-data",
-    currentPrice: Number(priceData.output.stck_prpr),
-    changeRate: Number(priceData.output.prdy_ctrt),
+    currentPrice: num(priceData.output.stck_prpr),
+    changeRate: num(priceData.output.prdy_ctrt),
     volume,
     avgVolume,
     volumeRatio: avgVolume > 0 ? Number((volume / avgVolume).toFixed(2)) : 0,
