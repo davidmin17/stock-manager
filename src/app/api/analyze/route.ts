@@ -4,7 +4,8 @@ import { isValidStockCode, isValidStockName } from "@/lib/validate";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+// Hobby 플랜 한도(300s) 이내. 단일 그라운딩 호출(~80s)+재시도 여유 확보
+export const maxDuration = 180;
 
 export async function POST(req: Request) {
   const ip = getClientIp(req);
