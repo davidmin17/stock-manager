@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { AgentId, AgentCardState, AgentResult } from "@/types/agent";
+import type {
+  AgentId,
+  AgentCardState,
+  UnifiedAnalysisResult,
+} from "@/types/agent";
 import type { StockInfo } from "@/types/stock";
 
 const AGENT_IDS: AgentId[] = [
@@ -42,76 +46,40 @@ export function useAnalysis() {
       setIsAnalyzing(true);
       setAgentStates(createInitialStates());
 
-      const body = { stockName: stock.name, stockCode: stock.code };
-
-      // Agent 1~4: 클라이언트에서 개별 병렬 호출
-      const parallelAgents: { id: AgentId; path: string; body: Record<string, string> }[] = [
-        { id: "news", path: "/api/agents/news", body },
-        { id: "market-data", path: "/api/agents/market-data", body: { stockCode: stock.code } },
-        { id: "financial", path: "/api/agents/financial", body },
-        { id: "risk", path: "/api/agents/risk", body },
-      ];
-
-      for (const { id } of parallelAgents) {
+      // 5개 카드 모두 분석 중 표시
+      for (const id of AGENT_IDS) {
         updateAgent(id, { status: "running" });
       }
 
-      const results = await Promise.allSettled(
-        parallelAgents.map(async ({ id, path, body: reqBody }) => {
-          const res = await fetch(path, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(reqBody),
-          });
-
-          if (!res.ok) throw new Error(`${id} failed: ${res.status}`);
-
-          const result: AgentResult = await res.json();
-          updateAgent(id, { status: "completed", result });
-          return result;
-        })
-      );
-
-      // 실패한 에이전트 에러 처리
-      for (let i = 0; i < results.length; i++) {
-        const r = results[i];
-        if (r.status === "rejected") {
-          updateAgent(parallelAgents[i].id, {
-            status: "error",
-            error: String(r.reason),
-          });
-        }
-      }
-
-      // Agent 5: 성공한 결과만 모아 종합 평가
-      const fulfilled = results
-        .filter((r): r is PromiseFulfilledResult<AgentResult> => r.status === "fulfilled")
-        .map((r) => r.value);
-
-      if (fulfilled.length > 0) {
-        updateAgent("synthesizer", { status: "running" });
-        try {
-          const res = await fetch("/api/agents/synthesizer", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ agentResults: fulfilled }),
-          });
-
-          if (!res.ok) throw new Error(`synthesizer failed: ${res.status}`);
-
-          const result: AgentResult = await res.json();
-          updateAgent("synthesizer", { status: "completed", result });
-        } catch (error) {
-          updateAgent("synthesizer", { status: "error", error: String(error) });
-        }
-      } else {
-        updateAgent("synthesizer", {
-          status: "error",
-          error: "분석 에이전트 결과가 없어 종합 평가를 수행할 수 없습니다.",
+      try {
+        const res = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stockName: stock.name, stockCode: stock.code }),
         });
-      }
 
-      setIsAnalyzing(false);
+        if (!res.ok) {
+          const { error } = await res
+            .json()
+            .catch(() => ({ error: "분석에 실패했습니다." }));
+          throw new Error(error ?? "분석에 실패했습니다.");
+        }
+
+        const data: UnifiedAnalysisResult = await res.json();
+
+        updateAgent("news", { status: "completed", result: data.news });
+        updateAgent("market-data", { status: "completed", result: data.marketData });
+        updateAgent("financial", { status: "completed", result: data.financial });
+        updateAgent("risk", { status: "completed", result: data.risk });
+        updateAgent("synthesizer", { status: "completed", result: data.synthesizer });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        for (const id of AGENT_IDS) {
+          updateAgent(id, { status: "error", error: message });
+        }
+      } finally {
+        setIsAnalyzing(false);
+      }
     },
     [updateAgent]
   );
