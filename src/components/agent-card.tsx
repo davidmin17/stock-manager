@@ -115,7 +115,7 @@ export const AgentCard = memo(function AgentCard({
         )}
         {status === "completed" && result && (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
               {result.summary}
             </p>
             {agentId !== "synthesizer" && (

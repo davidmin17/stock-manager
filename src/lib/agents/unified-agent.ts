@@ -48,35 +48,12 @@ ${marketDataJson}
     temperature: 0.3,
   })) as unknown as UnifiedAnalysisResult;
 
-  // 3. marketData 수치 필드를 KIS 실데이터로 직접 채움
-  const priceHistory = (dailyData.output ?? [])
-    .slice(0, 30)
-    .map((d) => ({
-      date: d.stck_bsop_date,
-      close: num(d.stck_clpr),
-      volume: num(d.acml_vol),
-    }))
-    .reverse();
-
-  const recentVolumes = priceHistory.slice(-20).map((p) => p.volume);
-  const avgVolume =
-    recentVolumes.length > 0
-      ? Math.round(
-          recentVolumes.reduce((sum, v) => sum + v, 0) / recentVolumes.length
-        )
-      : 0;
-  const volume = num(priceData.output.acml_vol);
-
-  // Gemini 해석 필드 + KIS 실데이터 수치 필드 병합
+  // 3. 핵심 수치(현재가·등락률)는 KIS 실데이터로 직접 채움
   const marketData: MarketDataAgentResult = {
     ...combined.marketData,
     agentId: "market-data",
     currentPrice: num(priceData.output.stck_prpr),
     changeRate: num(priceData.output.prdy_ctrt),
-    volume,
-    avgVolume,
-    volumeRatio: avgVolume > 0 ? Number((volume / avgVolume).toFixed(2)) : 0,
-    priceHistory,
   };
 
   return { ...combined, marketData };

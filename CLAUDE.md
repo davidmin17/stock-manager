@@ -119,7 +119,7 @@ REDIS_URL=redis://user:password@host:port
        │
        ▼
   ③ 통합 JSON → 5개 결과로 분해
-     · marketData 수치 필드(현재가/거래량/차트)는 KIS 실데이터로 직접 채움
+     · marketData 핵심 수치(현재가/등락률)는 KIS 실데이터로 직접 채움
        │
        ▼
   단일 JSON 응답 → 5개 카드 일괄 표시
@@ -128,6 +128,7 @@ REDIS_URL=redis://user:password@host:port
 
 - 종합 가중치: 뉴스 20% / 시세·수급 25% / 재무 30% / 리스크 25%
 - 단일 호출이므로 카드별 점진 스트리밍 없이 응답 수신 시 한 번에 표시.
+- **영역 카드는 미니멀**: 점수 + ≤3줄 요약 + 핵심 수치(시세 현재가·등락률, 재무 PER/PBR/ROE/부채/유동, 리스크 레벨, 뉴스 센티먼트)만 표시. 뉴스목록·차트·출처 등 보조 데이터는 출력/표시하지 않음. 종합 평가 카드만 상세(목표가/손절가/SWOT) 유지.
 
 ---
 
@@ -164,4 +165,4 @@ REDIS_URL=redis://user:password@host:port
 - **주석**: 한국어, 복잡한 로직에만
 - **파일 크기**: 300줄 이하 권장
 - **에러 처리**: 시스템 경계(외부 API, 사용자 입력)에서만
-- **Vercel**: 모든 API 라우트에 `export const runtime = "nodejs"`, maxDuration 120초
+- **Vercel**: 모든 API 라우트에 `export const runtime = "nodejs"`. 분석 라우트는 maxDuration 180초(Hobby 한도 300초 이내). Gemini 호출은 115초 타임아웃 + 일시적 오류 1회 재시도
