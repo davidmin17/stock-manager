@@ -36,6 +36,7 @@
 | UI | 기존 5개 카드 레이아웃 유지 — 단일 응답으로 한 번에 채움 |
 | 시세 데이터 | KIS API 실데이터 유지, Gemini 호출 전 선조회하여 주입 |
 | 미사용 코드 | 개별 라우트/에이전트 파일 삭제 |
+| 유동비율 | `FinancialAgentResult`에 `currentRatio` 필드 신규 추가 (타입·프롬프트·재무 카드 반영) |
 
 ## 4. 아키텍처
 
@@ -97,7 +98,12 @@
 - 5회 병렬 fetch + synthesizer 후속 호출 제거.
 - `/api/analyze`에 단일 fetch. 시작 시 5개 카드 모두 `running` 설정.
 - 응답 수신 후 5개 카드를 한 번에 `completed`로 채움. 에러 시 5개 모두 `error`.
-- 타입(`agent.ts`), 카드/대시보드 컴포넌트는 변경 없음.
+- 카드/대시보드 컴포넌트 레이아웃은 유지(유동비율 표시만 추가).
+
+### (F) 유동비율 추가 — `src/types/agent.ts` + 재무 카드
+- `FinancialAgentResult`에 `currentRatio: number | null` 추가.
+- `UNIFIED_SYSTEM_PROMPT`의 financial 스키마에 `currentRatio`(유동비율 %) 포함.
+- 재무 카드(`agent-card.tsx`)에 유동비율 항목 표시 (PER/PBR/ROE/부채비율 옆).
 
 ## 6. 트레이드오프 / 리스크
 
