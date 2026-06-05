@@ -4,7 +4,9 @@ import { memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 import { ScoreGauge } from "./score-gauge";
+import { AgentCardDetails } from "./agent-card-details";
 import {
   Newspaper,
   BarChart3,
@@ -112,9 +114,17 @@ export const AgentCard = memo(function AgentCard({
           <p className="text-sm text-destructive">{error}</p>
         )}
         {status === "completed" && result && (
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {result.summary}
-          </p>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {result.summary}
+            </p>
+            {agentId !== "synthesizer" && (
+              <>
+                <Separator className="bg-border/30" />
+                <AgentCardDetails result={result} />
+              </>
+            )}
+          </div>
         )}
         {status === "idle" && (
           <p className="text-sm text-muted-foreground/50">대기 중</p>
