@@ -1,26 +1,25 @@
 # Stock Manager
 
-AI 멀티에이전트 한국 주식 분석 시스템
+AI 기반 한국 주식 분석 시스템
 
-5개의 AI 에이전트가 뉴스, 시세, 재무, 리스크를 병렬 분석하여 종합 투자 리포트를 생성합니다.
+단일 Gemini 호출(Google Search 그라운딩)로 뉴스·시세·재무·리스크 4개 영역을 분석하고 종합 투자 리포트를 생성합니다.
 
 ## 주요 기능
 
 - **종목 검색**: 초성 검색 지원 (예: "ㅅㅅ" → 삼성전자), KOSPI/KOSDAQ 전종목
-- **5개 AI 에이전트 병렬 분석**:
-  - 뉴스/센티먼트 분석 (Google Search Grounding)
-  - 시세/거래량 기술적 분석 (한국투자증권 API)
-  - 재무 분석 (Google Search Grounding)
-  - 리스크 분석 (Google Search Grounding)
+- **단일 호출 통합 분석** (Gemini 1회, Google Search 그라운딩):
+  - 뉴스/센티먼트 분석
+  - 시세/거래량 기술적 분석 (한국투자증권 API 실데이터)
+  - 재무 분석 (PER·PBR·ROE·부채비율·유동비율)
+  - 거시경제/시장 리스크 분석
   - 종합 평가 (SWOT, 목표가, 손절가)
-- **실시간 스트리밍**: SSE로 에이전트별 완료 시 즉시 결과 표시
 - **다크모드 UI**: 반응형 웹 디자인
 
 ## 기술 스택
 
 | 분류 | 기술 |
 |------|------|
-| 프레임워크 | Next.js 15 (App Router), React 19, TypeScript 5 |
+| 프레임워크 | Next.js 16 (App Router), React 19, TypeScript 5 |
 | UI | shadcn/ui, Tailwind CSS 4, Lucide React |
 | AI | Google Gemini API (`@google/genai`) |
 | 시세 데이터 | 한국투자증권 Open API |
@@ -77,20 +76,25 @@ pnpm start
 ```
 사용자 → 종목 검색 → 분석 시작
                         │
-          ┌─────────────┼─────────────┐
-          │             │             │
-     Agent 1       Agent 2       Agent 3       Agent 4
-     뉴스/센티     시세/거래     재무 분석     리스크
-     (Gemini)     (KIS+Gemini)  (Gemini)     (Gemini)
-          │             │             │           │
-          └─────────────┴─────────────┘           │
-                        │                         │
-                   Agent 5 종합 평가 ◄─────────────┘
+                        ▼
+              POST /api/analyze
                         │
-                   최종 리포트 (SSE 스트리밍)
+                        ▼  runUnifiedAnalysis
+          ① KIS API 선조회 (시세/일별/수급)
+                        │
+                        ▼
+          ② Gemini 1회 호출 (Google Search 그라운딩)
+             뉴스 + 시세해석 + 재무 + 리스크 + 종합평가
+                        │
+                        ▼
+          ③ 통합 JSON → 5개 결과 분해
+             (시세 수치는 KIS 실데이터로 직접 채움)
+                        │
+                        ▼
+              최종 리포트 (5개 카드 일괄 표시)
 ```
 
-- **SSE 오케스트레이터**: `/api/analyze`에서 Agent 1~4 병렬 실행, 각각 완료 시 즉시 클라이언트 전송
+- **단일 호출**: `/api/analyze`가 KIS 데이터를 선조회한 뒤 Gemini를 1회 호출해 4개 영역 분석 + 종합 평가를 수행하고 단일 JSON으로 응답. 그라운딩 호출을 분석당 1회로 줄여 레이트 리밋을 방지.
 - **캐싱**: KIS 토큰(24h), 종목코드(매일 9시 갱신) — Redis 3단계 캐시 (메모리 → Redis → API)
 
 ## 보안

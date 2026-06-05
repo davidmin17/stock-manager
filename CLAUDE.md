@@ -1,8 +1,10 @@
-# CLAUDE.md — Stock Manager: AI 멀티에이전트 주식 분석 시스템
+# CLAUDE.md — Stock Manager: AI 주식 분석 시스템
 
 ## 프로젝트 개요
 
-**Stock Manager**는 5개의 AI 서브 에이전트가 병렬로 분석한 결과를 종합하여, 한국 주식(KOSPI/KOSDAQ) 종목의 투자 가치를 100점 만점으로 평가하는 웹 애플리케이션입니다.
+**Stock Manager**는 단일 Gemini 호출(Google Search 그라운딩)로 4개 영역(뉴스/센티먼트, 시세/수급, 재무, 리스크)을 분석하고 종합하여, 한국 주식(KOSPI/KOSDAQ) 종목의 투자 가치를 100점 만점으로 평가하는 웹 애플리케이션입니다.
+
+> 과거에는 4개 에이전트를 병렬 호출 후 종합 에이전트로 합치는 5-호출 구조였으나, Gemini 그라운딩 레이트 리밋을 피하기 위해 **단일 호출**(`runUnifiedAnalysis`)로 통합했습니다. 시세 수치(현재가/거래량/차트)는 KIS 실데이터로 직접 채웁니다.
 
 - **앱 형태**: Next.js 풀스택 웹앱 (다크모드, 반응형)
 - **배포**: Vercel (GitHub 연동 자동 배포)
@@ -13,7 +15,7 @@
 
 ## 기술 스택
 
-- **Next.js 15** (App Router) + **React 19** + **TypeScript 5**
+- **Next.js 16** (App Router) + **React 19** + **TypeScript 5**
 - **shadcn/ui** + **Tailwind CSS 4** + **Lucide React**
 - **Google Gemini API** (`@google/genai` SDK, 모델은 환경변수 `GEMINI_MODEL`로 설정)
 - **한국투자증권 Open API** (REST, OAuth 토큰 인증)
@@ -40,42 +42,33 @@ stock-manager/
 │   │   ├── page.tsx                # 메인 페이지
 │   │   ├── globals.css
 │   │   └── api/
-│   │       ├── analyze/route.ts    # SSE 오케스트레이터
+│   │       ├── analyze/route.ts    # 단일 호출 분석 API (JSON 응답)
 │   │       ├── search/route.ts     # 종목 검색 API
-│   │       └── agents/
-│   │           ├── news/route.ts
-│   │           ├── market-data/route.ts
-│   │           ├── financial/route.ts
-│   │           ├── risk/route.ts
-│   │           └── synthesizer/route.ts
+│   │       └── cron/stock-codes/   # 종목코드 갱신 크론
 │   │
 │   ├── components/
 │   │   ├── ui/                     # shadcn/ui 컴포넌트
 │   │   ├── stock-search.tsx        # 종목 검색 (자동완성, 키보드 네비게이션)
 │   │   ├── analysis-dashboard.tsx  # 대시보드 컨테이너
-│   │   ├── agent-card.tsx          # 에이전트 결과 카드 (React.memo)
+│   │   ├── agent-card.tsx          # 영역별 결과 카드 (React.memo)
 │   │   ├── score-gauge.tsx         # SVG 점수 게이지
 │   │   └── report-summary.tsx      # 종합 리포트 카드
 │   │
 │   ├── hooks/
-│   │   ├── use-analysis.ts         # SSE 기반 분석 상태 관리
+│   │   ├── use-analysis.ts         # 단일 호출 분석 상태 관리
 │   │   └── use-stock-search.ts     # 종목 검색 (디바운스)
 │   │
 │   ├── lib/
 │   │   ├── cache.ts                # Redis 클라이언트 (ioredis, TLS 지원)
-│   │   ├── gemini.ts               # Gemini API 래퍼
+│   │   ├── gemini.ts               # Gemini API 래퍼 (JSON 추출 포함)
 │   │   ├── kis-api.ts              # KIS API 클라이언트 (타임아웃, 토큰 자동갱신)
 │   │   ├── kis-token.ts            # KIS 토큰 관리 (L1 메모리 → L2 Redis → L3 API)
 │   │   ├── stock-code.ts           # 종목 검색 (초성 지원, Redis 캐시, 매일 9시 갱신)
+│   │   ├── rate-limit.ts           # IP 기반 인메모리 레이트 리밋
 │   │   ├── validate.ts             # 입력 검증 유틸
 │   │   └── agents/
-│   │       ├── types.ts
-│   │       ├── prompts.ts          # 5개 에이전트 시스템 프롬프트
-│   │       ├── news-agent.ts       # 뉴스/센티먼트 (Gemini + Google Search)
-│   │       ├── market-agent.ts     # 시세/거래량 (KIS API + Gemini)
-│   │       ├── financial-agent.ts  # 재무 분석 (Gemini + Google Search)
-│   │       ├── risk-agent.ts       # 리스크 분석 (Gemini + Google Search)
-│   │       └── synthesizer-agent.ts # 종합 평가 (Agent 1~4 결과 종합)
+│   │       ├── prompts.ts          # 통합 분석 시스템 프롬프트 (UNIFIED_SYSTEM_PROMPT)
+│   │       └── unified-agent.ts    # 단일 호출 분석 (KIS 선조회 + Gemini 1회 + 결과 분해)
 │   │
 │   └── types/
 │       ├── agent.ts                # 에이전트 응답 타입
@@ -105,7 +98,7 @@ REDIS_URL=redis://user:password@host:port
 
 ---
 
-## 에이전트 아키텍처
+## 분석 아키텍처
 
 ```
 사용자 입력 (종목명)
@@ -114,25 +107,27 @@ REDIS_URL=redis://user:password@host:port
   종목코드 변환 (Redis 캐시 / 네이버 API)
        │
        ▼
-  ┌────┴──────────────────────────────────┐
-  │       병렬 실행 (Promise.allSettled)    │
-  │                                        │
-  │  Agent 1     Agent 2    Agent 3    Agent 4
-  │  뉴스/센티   시세/거래   재무분석   리스크
-  │  (Gemini     (KIS API   (Gemini    (Gemini
-  │   +Search)   +Gemini)    +Search)   +Search)
-  └────┬──────────┬──────────┬──────────┘
-       │          │          │
-       ▼──────────▼──────────▼
-              Agent 5
-            종합 평가 (순차)
-                │
-                ▼
-           최종 리포트
-           (목표가 + 손절가 + SWOT)
+  POST /api/analyze  (레이트 리밋 + 입력 검증)
+       │
+       ▼  runUnifiedAnalysis(stockName, stockCode)
+  ① KIS API 선조회 (현재가/일별/수급)  ← Gemini 아님, 레이트 리밋 무관
+       │
+       ▼
+  ② Gemini 1회 호출 (Google Search 그라운딩)
+     · 뉴스 + 재무 + 시세해석 + 리스크 + 종합평가를 한 번에 수행
+     · 통합 JSON 반환: { news, marketData, financial, risk, synthesizer }
+       │
+       ▼
+  ③ 통합 JSON → 5개 결과로 분해
+     · marketData 수치 필드(현재가/거래량/차트)는 KIS 실데이터로 직접 채움
+       │
+       ▼
+  단일 JSON 응답 → 5개 카드 일괄 표시
+  (종합: 목표가 + 손절가 + SWOT)
 ```
 
-SSE(Server-Sent Events)로 에이전트별 완료 시 즉시 클라이언트에 스트리밍.
+- 종합 가중치: 뉴스 20% / 시세·수급 25% / 재무 30% / 리스크 25%
+- 단일 호출이므로 카드별 점진 스트리밍 없이 응답 수신 시 한 번에 표시.
 
 ---
 
