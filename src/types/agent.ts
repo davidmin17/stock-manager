@@ -49,6 +49,7 @@ export interface FinancialAgentResult {
   pbr: number | null;
   roe: number | null;
   debtRatio: number | null;
+  currentRatio: number | null;
   revenueGrowth: string;
   profitTrend: string;
   consensus: string;
@@ -117,4 +118,12 @@ export interface AgentCardState {
   status: AgentStatus;
   result: AgentResult | null;
   error: string | null;
+}
+
+export interface UnifiedAnalysisResult {
+  news: NewsAgentResult;
+  marketData: MarketDataAgentResult;
+  financial: FinancialAgentResult;
+  risk: RiskAgentResult;
+  synthesizer: SynthesizerAgentResult;
 }
