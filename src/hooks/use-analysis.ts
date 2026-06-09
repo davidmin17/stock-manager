@@ -52,10 +52,13 @@ export function useAnalysis() {
         });
 
         if (!res.ok) {
-          const { error } = await res
-            .json()
-            .catch(() => ({ error: "분석에 실패했습니다." }));
-          throw new Error(error ?? "분석에 실패했습니다.");
+          const body = await res.json().catch(() => null);
+          // 서버 에러 필드가 문자열일 때만 사용 (객체면 [object Object] 방지)
+          const serverError =
+            body && typeof body.error === "string" ? body.error : null;
+          throw new Error(
+            serverError ?? "분석에 실패했습니다. 잠시 후 다시 시도해주세요."
+          );
         }
 
         const data: UnifiedAnalysisResult = await res.json();
@@ -74,7 +77,12 @@ export function useAnalysis() {
           }))
         );
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === "string"
+              ? error
+              : "분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
         setAgentStates(
           buildStates("error", () => ({ result: null, error: message }))
         );
@@ -85,11 +93,5 @@ export function useAnalysis() {
     []
   );
 
-  const reset = useCallback(() => {
-    setAgentStates(createInitialStates());
-    setIsAnalyzing(false);
-    setCurrentStock(null);
-  }, []);
-
-  return { agentStates, isAnalyzing, currentStock, startAnalysis, reset };
+  return { agentStates, isAnalyzing, currentStock, startAnalysis };
 }

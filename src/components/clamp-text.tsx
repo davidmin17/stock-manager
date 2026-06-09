@@ -5,17 +5,10 @@ import { useState, useRef, useLayoutEffect } from "react";
 interface ClampTextProps {
   text: string;
   className?: string;
-  lines?: 2 | 3 | 4;
 }
 
-const CLAMP_CLASS: Record<number, string> = {
-  2: "line-clamp-2",
-  3: "line-clamp-3",
-  4: "line-clamp-4",
-};
-
-// 기본은 지정 줄 수로 클램, 넘칠 때만 "더 보기/접기" 토글 노출
-export function ClampText({ text, className, lines = 3 }: ClampTextProps) {
+// 3줄로 클램, 넘칠 때만 "더 보기/접기" 토글 노출
+export function ClampText({ text, className }: ClampTextProps) {
   const [expanded, setExpanded] = useState(false);
   const [clamped, setClamped] = useState(false);
   const ref = useRef<HTMLParagraphElement>(null);
@@ -29,7 +22,7 @@ export function ClampText({ text, className, lines = 3 }: ClampTextProps) {
     <div>
       <p
         ref={ref}
-        className={`${className ?? ""} ${expanded ? "" : CLAMP_CLASS[lines]}`}
+        className={`${className ?? ""} ${expanded ? "" : "line-clamp-3"}`}
       >
         {text}
       </p>
