@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { ScoreGauge } from "./score-gauge";
 import { AgentCardDetails } from "./agent-card-details";
+import { ClampText } from "./clamp-text";
 import {
   Newspaper,
   BarChart3,
@@ -115,9 +116,10 @@ export const AgentCard = memo(function AgentCard({
         )}
         {status === "completed" && result && (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
-              {result.summary}
-            </p>
+            <ClampText
+              text={result.summary}
+              className="text-sm text-muted-foreground leading-relaxed"
+            />
             {agentId !== "synthesizer" && (
               <>
                 <Separator className="bg-border/30" />
